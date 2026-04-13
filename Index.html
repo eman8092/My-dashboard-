@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Dashboard - Weather Background</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #f5f5f5;
+      --card: rgba(255, 255, 255, 0.85);
+      --text: #111;
+      --accent: #4f46e5;
+      --nav-text: #111;
+      --border: rgba(255,255,255,0.3);
+    }
+
+    body.dark {
+      --bg: #0f172a;
+      --card: rgba(30, 41, 59, 0.9);
+      --text: #f8fafc;
+      --nav-text: #f8fafc;
+      --border: rgba(255,255,255,0.2);
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #56ccf2, #2f80ed);
+      color: var(--text);
+      padding-bottom: 80px;
+      transition: background 0.5s ease;
+      min-height: 100vh;
+    }
+
+    /* Weather-specific backgrounds (applied dynamically) */
+    body.weather-clear {
+      background: linear-gradient(135deg, #56ccf2, #2f80ed);
+    }
+    body.weather-clouds {
+      background: linear-gradient(135deg, #bdc3c7, #2c3e50);
+    }
+    body.weather-rain {
+      background: linear-gradient(135deg, #4b79a1, #283e51);
+    }
+    body.weather-snow {
+      background: linear-gradient(135deg, #e0eafc, #cfdef3);
+    }
+    body.weather-thunderstorm {
+      background: linear-gradient(135deg, #232526, #414345);
+    }
+    body.weather-mist {
+      background: linear-gradient(135deg, #9796f0, #fbc2eb);
+    }
+    body.weather-default {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+    }
+
+    /* Keep dark mode backgrounds but override with weather if not dark? Actually we blend */
+    body.dark.weather-clear {
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    }
+    body.dark.weather-clouds {
+      background: linear-gradient(135deg, #2c3e50, #1a1a2e);
+    }
+    body.dark.weather-rain {
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+    }
+    body.dark.weather-snow {
+      background: linear-gradient(135deg, #2b5876, #4e4376);
+    }
+    body.dark.weather-thunderstorm {
+      background: linear-gradient(135deg, #0f0c29, #302b63);
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      background: var(--card);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .grid {
+      padding: 1rem;
+    }
+
+    .card {
+      background: var(--card);
+      backdrop-filter: blur(8px);
+      padding: 1rem;
+      border-radius: 20px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      margin-bottom: 1rem;
+      border: 1px solid var(--border);
+      transition: all 0.2s;
+    }
+
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 40px;
+      cursor: pointer;
+      font-weight: 500;
+      margin: 0.25rem;
+      transition: transform 0.1s;
+    }
+    button:active {
+      transform: scale(0.97);
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 0.6rem;
+      margin: 0.5rem 0;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.2);
+      color: var(--text);
+    }
+
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 70px;
+      background: var(--card);
+      backdrop-filter: blur(10px);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      border-top: 1px solid var(--border);
+      z-index: 20;
+    }
+
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: none;
+      border: none;
+      color: var(--nav-text);
+      cursor: pointer;
+      font-size: 20px;
+    }
+
+    .nav-btn span {
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .nav-btn.active {
+      color: var(--accent);
+      font-weight: bold;
+    }
+
+    #todoList li, #notesList div {
+      background: rgba(0,0,0,0.05);
+      margin: 0.5rem 0;
+      padding: 0.5rem;
+      border-radius: 12px;
+      cursor: pointer;
+      border-left: 4px solid var(--accent);
+    }
+
+    #timer {
+      font-size: 2rem;
+      font-family: monospace;
+      text-align: center;
+      margin: 1rem 0;
+    }
+
+    .forecast-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 1rem;
+    }
+
+    .forecast-day {
+      background: rgba(0,0,0,0.2);
+      padding: 8px;
+      border-radius: 12px;
+      text-align: center;
+      flex: 1;
+      min-width: 80px;
+      backdrop-filter: blur(4px);
+    }
+
+    .spinner {
+      width: 25px;
+      height: 25px;
+      border: 4px solid #ccc;
+      border-top: 4px solid var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 10px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>✨ Smart Dashboard</h1>
+  <button id="themeToggle">🌙</button>
+</header>
+
+<main class="grid">
+  <section id="todoSection" class="card">
+    <h2>📝 To-Do</h2>
+    <input id="todoInput" placeholder="Add task...">
+    <button onclick="addTodo()">Add</button>
+    <ul id="todoList"></ul>
+    <small>⚡ Click a task to delete it</small>
+  </section>
+
+  <section id="notesSection" class="card">
+    <h2>📒 Notes</h2>
+    <textarea id="noteInput" rows="2" placeholder="Write note..."></textarea>
+    <button onclick="addNote()">Save Note</button>
+    <div id="notesList"></div>
+    <small>✏️ Click a note to delete it</small>
+  </section>
+
+  <section id="stopwatchSection" class="card">
+    <h2>⏱️ Stopwatch</h2>
+    <div id="timer">00:00:00</div>
+    <button onclick="startTimer()">▶ Start</button>
+    <button onclick="stopTimer()">⏸ Stop</button>
+    <button onclick="resetTimer()">🔄 Reset</button>
+  </section>
+
+  <section id="weatherSection" class="card">
+    <h2>🌦️ Weather</h2>
+    <input id="cityInput" placeholder="Enter city...">
+    <button onclick="searchWeather()">🔍 Search</button>
+    <button onclick="getLocationWeather()">📍 Use my location</button>
+    <div id="weather">🌤️ Loading...</div>
+    <div id="forecast"></div>
+  </section>
+</main>
+
+<nav class="bottom-nav">
+  <button class="nav-btn" data-tab="todoSection">📝<span>Todo</span></button>
+  <button class="nav-btn" data-tab="notesSection">📒<span>Notes</span></button>
+  <button class="nav-btn" data-tab="stopwatchSection">⏱️<span>Timer</span></button>
+  <button class="nav-btn" data-tab="weatherSection">🌦️<span>Weather</span></button>
+</nav>
+
+<script>
+  const API_KEY = "3e6a5d3d29a510d67fa6ef61f29f8d6f";
+
+  // ---------- THEME ----------
+  const toggleBtn = document.getElementById("themeToggle");
+  function loadTheme() {
+    const saved = localStorage.getItem("theme");
+    if (saved === "dark") document.body.classList.add("dark");
+  }
+  toggleBtn.addEventListener("click", () => {
+    document.body.classList.toggle("dark");
+    localStorage.setItem("theme", document.body.classList.contains("dark") ? "dark" : "light");
+    // re-apply weather background to preserve effect after theme change
+    if (window.lastWeatherCondition) {
+      applyWeatherBackground(window.lastWeatherCondition);
+    }
+  });
+
+  // ---------- DYNAMIC WEATHER BACKGROUND ----------
+  function applyWeatherBackground(condition) {
+    // Remove existing weather classes
+    const weatherClasses = ['weather-clear', 'weather-clouds', 'weather-rain', 'weather-snow', 'weather-thunderstorm', 'weather-mist', 'weather-default'];
+    document.body.classList.remove(...weatherClasses);
+    
+    const cond = condition.toLowerCase();
+    let bgClass = 'weather-default';
+    
+    if (cond.includes('clear') || cond.includes('sun')) {
+      bgClass = 'weather-clear';
+    } else if (cond.includes('cloud') || cond.includes('overcast')) {
+      bgClass = 'weather-clouds';
+    } else if (cond.includes('rain') || cond.includes('drizzle')) {
+      bgClass = 'weather-rain';
+    } else if (cond.includes('snow') || cond.includes('sleet')) {
+      bgClass = 'weather-snow';
+    } else if (cond.includes('thunder') || cond.includes('storm')) {
+      bgClass = 'weather-thunderstorm';
+    } else if (cond.includes('mist') || cond.includes('fog') || cond.includes('haze')) {
+      bgClass = 'weather-mist';
+    }
+    
+    document.body.classList.add(bgClass);
+    window.lastWeatherCondition = condition; // store for theme toggle
+  }
+
+  // ---------- TAB SYSTEM ----------
+  function showSection(sectionId, clickedBtn = null) {
+    document.querySelectorAll(".card").forEach(card => card.style.display = "none");
+    document.getElementById(sectionId).style.display = "block";
+
+    document.querySelectorAll(".nav-btn").forEach(btn => btn.classList.remove("active"));
+    if (clickedBtn) {
+      clickedBtn.classList.add("active");
+    } else {
+      const activeBtn = document.querySelector(`.nav-btn[data-tab="${sectionId}"]`);
+      if (activeBtn) activeBtn.classList.add("active");
+    }
+    localStorage.setItem("activeTab", sectionId);
+  }
+
+  document.querySelectorAll(".nav-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      const tabId = btn.getAttribute("data-tab");
+      showSection(tabId, btn);
+    });
+  });
+
+  // ---------- TO-DO (with localStorage fallback) ----------
+  async function loadTodos() {
+    const list = document.getElementById("todoList");
+    try {
+      const res = await fetch("http://127.0.0.1:3000/todos");
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      list.innerHTML = "";
+      data.forEach(todo => {
+        const li = document.createElement("li");
+        li.textContent = todo.text;
+        li.onclick = async () => {
+          await fetch(`http://127.0.0.1:3000/todos/${todo.id}`, { method: "DELETE" });
+          loadTodos();
+        };
+        list.appendChild(li);
+      });
+    } catch (err) {
+      let localTodos = JSON.parse(localStorage.getItem("localTodos") || "[]");
+      list.innerHTML = "";
+      localTodos.forEach((todo, idx) => {
+        const li = document.createElement("li");
+        li.textContent = todo.text;
+        li.onclick = () => {
+          localTodos.splice(idx, 1);
+          localStorage.setItem("localTodos", JSON.stringify(localTodos));
+          loadTodos();
+        };
+        list.appendChild(li);
+      });
+      if (localTodos.length === 0) list.innerHTML = "<li>✨ Add a task (offline mode)</li>";
+    }
+  }
+
+  window.addTodo = async function () {
+    const input = document.getElementById("todoInput");
+    if (!input.value.trim()) return;
+    try {
+      const res = await fetch("http://127.0.0.1:3000/todos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: input.value })
+      });
+      if (res.ok) {
+        input.value = "";
+        loadTodos();
+        return;
+      }
+    } catch(e) { }
+    let localTodos = JSON.parse(localStorage.getItem("localTodos") || "[]");
+    localTodos.push({ text: input.value });
+    localStorage.setItem("localTodos", JSON.stringify(localTodos));
+    input.value = "";
+    loadTodos();
+  };
+
+  // ---------- NOTES ----------
+  window.addNote = function () {
+    const input = document.getElementById("noteInput");
+    const container = document.getElementById("notesList");
+    if (!input.value.trim()) return;
+    const div = document.createElement("div");
+    div.textContent = input.value;
+    div.onclick = () => div.remove();
+    container.appendChild(div);
+    input.value = "";
+    const notes = Array.from(container.children).map(n => n.textContent);
+    localStorage.setItem("userNotes", JSON.stringify(notes));
+  };
+
+  function loadNotes() {
+    const container = document.getElementById("notesList");
+    const saved = localStorage.getItem("userNotes");
+    if (saved) {
+      const notes = JSON.parse(saved);
+      notes.forEach(text => {
+        const div = document.createElement("div");
+        div.textContent = text;
+        div.onclick = () => div.remove();
+        container.appendChild(div);
+      });
+    }
+  }
+
+  // ---------- STOPWATCH ----------
+  let stopwatchInterval = null;
+  let stopwatchSeconds = 0;
+  function updateTimerDisplay() {
+    const hours = Math.floor(stopwatchSeconds / 3600);
+    const minutes = Math.floor((stopwatchSeconds % 3600) / 60);
+    const secs = stopwatchSeconds % 60;
+    document.getElementById("timer").innerText = 
+      `${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+  }
+  window.startTimer = function () {
+    if (stopwatchInterval) return;
+    stopwatchInterval = setInterval(() => {
+      stopwatchSeconds++;
+      updateTimerDisplay();
+    }, 1000);
+  };
+  window.stopTimer = function () {
+    if (stopwatchInterval) {
+      clearInterval(stopwatchInterval);
+      stopwatchInterval = null;
+    }
+  };
+  window.resetTimer = function () {
+    stopTimer();
+    stopwatchSeconds = 0;
+    updateTimerDisplay();
+  };
+
+  // ---------- WEATHER + AI ADVICE + BACKGROUND CHANGE ----------
+  function getSmartAdvice(temp, condition) {
+    const t = Number(temp);
+    const c = condition.toLowerCase();
+    if (c.includes("rain")) return "🌧️ Take an umbrella!";
+    if (t <= 18) return "🧥 It's cold – wear a jacket.";
+    if (t >= 30) return "🔥 Hot day – stay hydrated!";
+    if (c.includes("clear")) return "😎 Perfect weather for outdoor fun.";
+    return "🙂 Moderate weather. Enjoy!";
+  }
+
+  window.searchWeather = async function () {
+    const city = document.getElementById("cityInput").value.trim();
+    if (!city) return alert("Enter a city name");
+    const weatherDiv = document.getElementById("weather");
+    weatherDiv.innerHTML = "<div class='spinner'></div>";
+    try {
+      const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${API_KEY}`);
+      const data = await res.json();
+      if (data.cod !== 200) throw new Error();
+      
+      const condition = data.weather[0].description;
+      // Apply background based on weather condition
+      applyWeatherBackground(condition);
+      
+      weatherDiv.innerHTML = `
+        <h3>${data.name}</h3>
+        <img src="https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png">
+        <h2>${data.main.temp}°C</h2>
+        <p>${condition}</p>
+        <p><strong>💡 ${getSmartAdvice(data.main.temp, condition)}</strong></p>
+      `;
+      getForecast(city);
+    } catch {
+      weatherDiv.innerHTML = "❌ City not found or API error";
+    }
+  };
+
+  window.getForecast = async function (city) {
+    const forecastDiv = document.getElementById("forecast");
+    forecastDiv.innerHTML = "<div class='spinner'></div>";
+    try {
+      const res = await fetch(`https://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${API_KEY}`);
+      const data = await res.json();
+      const daily = data.list.filter((_, idx) => idx % 8 === 0);
+      forecastDiv.innerHTML = `<div class="forecast-container">` + 
+        daily.map(item => `
+          <div class="forecast-day">
+            <p>${new Date(item.dt_txt).toLocaleDateString(undefined, {weekday:'short'})}</p>
+            <img src="https://openweathermap.org/img/wn/${item.weather[0].icon}.png">
+            <p>${Math.round(item.main.temp)}°C</p>
+          </div>
+        `).join("") + `</div>`;
+    } catch {
+      forecastDiv.innerHTML = "⚠️ Forecast not available";
+    }
+  };
+
+  window.getLocationWeather = function () {
+    if (!navigator.geolocation) {
+      alert("Geolocation not supported");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      const weatherDiv = document.getElementById("weather");
+      weatherDiv.innerHTML = "<div class='spinner'></div>";
+      try {
+        const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`);
+        const data = await res.json();
+        document.getElementById("cityInput").value = data.name;
+        const condition = data.weather[0].description;
+        applyWeatherBackground(condition);
+        weatherDiv.innerHTML = `
+          <h3>${data.name}</h3>
+          <img src="https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png">
+          <h2>${data.main.temp}°C</h2>
+          <p>${condition}</p>
+          <p><strong>💡 ${getSmartAdvice(data.main.temp, condition)}</strong></p>
+        `;
+        getForecast(data.name);
+      } catch {
+        weatherDiv.innerHTML = "❌ Could not fetch weather for your location";
+      }
+    }, () => alert("Location access denied"));
+  };
+
+  // ---------- INITIAL LOAD ----------
+  window.onload = () => {
+    loadTheme();
+    loadTodos();
+    loadNotes();
+    resetTimer();
+
+    const savedTab = localStorage.getItem("activeTab");
+    if (savedTab && document.getElementById(savedTab)) {
+      showSection(savedTab);
+    } else {
+      showSection("todoSection");
+    }
+    // Load default weather for a city (London) and update background
+    document.getElementById("cityInput").value = "London";
+    searchWeather();
+  };
+</script>
+</body>
+</html>
